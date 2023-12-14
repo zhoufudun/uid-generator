@@ -28,8 +28,8 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PaddedAtomicLong extends AtomicLong {
     private static final long serialVersionUID = -3415778863941386253L;
 
-    /** Padded 6 long (48 bytes) */
-    public volatile long p1, p2, p3, p4, p5, p6 = 7L;
+    /** Padded 6 long (48 bytes) */  // 解决伪共享问题
+    public volatile long p1, p2, p3, p4, p5, p6 = 7L;  // 64 bytes = 8 bytes (object reference) + 6 * 8 bytes (padded long) + 8 bytes (a long value)
 
     /**
      * Constructors from {@link AtomicLong}
@@ -38,7 +38,7 @@ public class PaddedAtomicLong extends AtomicLong {
         super();
     }
 
-    public PaddedAtomicLong(long initialValue) {
+    public PaddedAtomicLong(long initialValue) { // initialValue=时间表示的s, 例如：1702537356
         super(initialValue);
     }
 

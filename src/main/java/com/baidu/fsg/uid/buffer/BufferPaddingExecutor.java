@@ -43,20 +43,24 @@ public class BufferPaddingExecutor {
     private static final String SCHEDULE_NAME = "RingBuffer-Padding-Schedule";
     private static final long DEFAULT_SCHEDULE_INTERVAL = 5 * 60L; // 5 minutes
     
-    /** Whether buffer padding is running */
+    /** Whether buffer padding(填充) is running */
     private final AtomicBoolean running;
 
-    /** We can borrow UIDs from the future, here store the last second we have consumed */
+    /** We can borrow UIDs from the future, here store the last second we have consumed */  // 我们可以从未来借用UID，在这里存储我们消耗的最后一秒
+    /**
+     *上次填充时间（s）：这里的时间会比当前时间大，
+     * 大的值=boostPower（比如3）^2 * maxSequence（比如8192） * paddingFactor(比如50%) /  maxSequence = boostPower（比如3）^2 * paddingFactor(比如50%)=4s
+     */
     private final PaddedAtomicLong lastSecond;
 
     /** RingBuffer & BufferUidProvider */
-    private final RingBuffer ringBuffer;
+    private final RingBuffer ringBuffer; // 初始值;RingBuffer [bufferSize=65536, tail=-1, cursor=-1, paddingThreshold=32768]
     private final BufferedUidProvider uidProvider;
 
-    /** Padding immediately by the thread pool */
+    /** Padding immediately by the thread pool */  // 发现buffer剩余量超过阈值的时候，使用这个线程池填充buffer
     private final ExecutorService bufferPadExecutors;
     /** Padding schedule thread */
-    private final ScheduledExecutorService bufferPadSchedule;
+    private final ScheduledExecutorService bufferPadSchedule; // 定时填充buffer线程
     
     /** Schedule interval Unit as seconds */
     private long scheduleInterval = DEFAULT_SCHEDULE_INTERVAL;
@@ -85,7 +89,7 @@ public class BufferPaddingExecutor {
         this.uidProvider = uidProvider;
 
         // initialize thread pool
-        int cores = Runtime.getRuntime().availableProcessors();
+        int cores = Runtime.getRuntime().availableProcessors(); // 16
         bufferPadExecutors = Executors.newFixedThreadPool(cores * 2, new NamingThreadFactory(WORKER_NAME));
 
         // initialize schedule thread
@@ -136,22 +140,23 @@ public class BufferPaddingExecutor {
 
     /**
      * Padding buffer fill the slots until to catch the cursor
+     * 填充缓冲区插槽，直到生产者的位置（生产者的下表）追赶上光标位置（消费者的位置）
      */
     public void paddingBuffer() {
         LOGGER.info("Ready to padding buffer lastSecond:{}. {}", lastSecond.get(), ringBuffer);
 
         // is still running
         if (!running.compareAndSet(false, true)) {
-            LOGGER.info("Padding buffer is still running. {}", ringBuffer);
+            LOGGER.info("Padding buffer is still running. {}", ringBuffer); // 已经有一个在填充中，返回
             return;
         }
 
-        // fill the rest slots until to catch the cursor
+        // fill the rest slots until to catch the cursor // 填满缓存区
         boolean isFullRingBuffer = false;
         while (!isFullRingBuffer) {
-            List<Long> uidList = uidProvider.provide(lastSecond.incrementAndGet());
+            List<Long> uidList = uidProvider.provide(lastSecond.incrementAndGet()); // 入参为当前时间的下一秒
             for (Long uid : uidList) {
-                isFullRingBuffer = !ringBuffer.put(uid);
+                isFullRingBuffer = !ringBuffer.put(uid); // 启动的时候填充后：RingBuffer [bufferSize=65536, tail=8191, cursor=-1, paddingThreshold=32768]
                 if (isFullRingBuffer) {
                     break;
                 }

@@ -21,8 +21,20 @@ import org.springframework.util.Assert;
 
 /**
  * Allocate 64 bits for the UID(long)<br>
- * sign (fixed 1bit) -> deltaSecond -> workerId -> sequence(within the same second)
- * 
+ * sign (fixed 1bit) -> deltaSecond(28bit) -> workerId(22bit) -> sequence(within the same second)(13bit)
+ *
+ * sign(1bit)
+ * 固定1bit符号标识，即生成的UID为正数。
+ *
+ * delta seconds (28 bits)
+ * 当前时间，相对于时间基点"2016-05-20"的增量值，单位：秒，最多可支持约8.7年
+ *
+ * worker id (22 bits)
+ * 机器id，最多可支持约420w次机器启动。内置实现为在启动时由数据库分配，默认分配策略为用后即弃，后续可提供复用策略。
+ *
+ * sequence (13 bits)
+ * 每秒下的并发序列，13 bits可支持每秒8192个并发
+ *
  * @author yutianbao
  */
 public class BitsAllocator {
@@ -42,15 +54,15 @@ public class BitsAllocator {
     /**
      * Max value for workId & sequence
      */
-    private final long maxDeltaSeconds;
-    private final long maxWorkerId;
-    private final long maxSequence;
+    private final long maxDeltaSeconds; // 268435455=2^28-1
+    private final long maxWorkerId; // 4194303=2^22-1
+    private final long maxSequence; // 8191=2^13-1
 
     /**
      * Shift for timestamp & workerId
      */
-    private final int timestampShift;
-    private final int workerIdShift;
+    private final int timestampShift; // 35
+    private final int workerIdShift; // 13
 
     /**
      * Constructor with timestampBits, workerIdBits, sequenceBits<br>
@@ -67,19 +79,19 @@ public class BitsAllocator {
         this.sequenceBits = sequenceBits;
 
         // initialize max value
-        this.maxDeltaSeconds = ~(-1L << timestampBits);
-        this.maxWorkerId = ~(-1L << workerIdBits);
-        this.maxSequence = ~(-1L << sequenceBits);
+        this.maxDeltaSeconds = ~(-1L << timestampBits); // 268435455=2^28-1
+        this.maxWorkerId = ~(-1L << workerIdBits); // 4194303=2^22-1
+        this.maxSequence = ~(-1L << sequenceBits); // 8191=2^13-1
 
         // initialize shift
-        this.timestampShift = workerIdBits + sequenceBits;
-        this.workerIdShift = sequenceBits;
+        this.timestampShift = workerIdBits + sequenceBits; // 22+13=35
+        this.workerIdShift = sequenceBits; // 13
     }
 
     /**
      * Allocate bits for UID according to delta seconds & workerId & sequence<br>
      * <b>Note that: </b>The highest bit will always be 0 for sign
-     * 
+     * 根据delta、workerId、sequence计算出64位的bit值=uid
      * @param deltaSeconds
      * @param workerId
      * @param sequence

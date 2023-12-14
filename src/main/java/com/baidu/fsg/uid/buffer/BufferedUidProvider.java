@@ -27,8 +27,8 @@ public interface BufferedUidProvider {
 
     /**
      * Provides UID in one second
-     * 
-     * @param momentInSecond
+     * 提供同一秒内的UID有序集合
+     * @param momentInSecond  某一秒
      * @return
      */
     List<Long> provide(long momentInSecond);

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RemoteRepositoriesConfiguration">
+    <remote-repository>
+      <option name="id" value="pwrd-nexus-releases" />
+      <option name="name" value="Internal Releases" />
+      <option name="url" value="http://nexus.sys.wanmei.com/repository/java-releases/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Maven Central repository" />
+      <option name="url" value="https://repo1.maven.org/maven2" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="jboss.community" />
+      <option name="name" value="JBoss Community repository" />
+      <option name="url" value="https://repository.jboss.org/nexus/content/repositories/public/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="pwrd-nexus-snapshots" />
+      <option name="name" value="Internal Snapshots" />
+      <option name="url" value="http://nexus.sys.wanmei.com/repository/java-snapshots/" />
+    </remote-repository>
+    <remote-repository>
+      <option name="id" value="central" />
+      <option name="name" value="Central Repository" />
+      <option name="url" value="http://nexus.sys.wanmei.com/repository/maven-public" />
+    </remote-repository>
+  </component>
+</project>

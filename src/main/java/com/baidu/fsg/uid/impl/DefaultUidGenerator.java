@@ -68,11 +68,11 @@ public class DefaultUidGenerator implements UidGenerator, InitializingBean {
 
     /** Customer epoch, unit as second. For example 2016-05-20 (ms: 1463673600000)*/
     protected String epochStr = "2016-05-20";
-    protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1463673600000L);
+    protected long epochSeconds = TimeUnit.MILLISECONDS.toSeconds(1463673600000L); // 2016-05-20 00:00:00
 
     /** Stable fields after spring bean initializing */
-    protected BitsAllocator bitsAllocator;
-    protected long workerId;
+    protected BitsAllocator bitsAllocator; // bitsAllocator用于机器自动的时候获取workerId
+    protected long workerId; // 机器id
 
     /** Volatile fields caused by nextId() */
     protected long sequence = 0L;
@@ -136,25 +136,25 @@ public class DefaultUidGenerator implements UidGenerator, InitializingBean {
         long currentSecond = getCurrentSecond();
 
         // Clock moved backwards, refuse to generate uid
-        if (currentSecond < lastSecond) {
+        if (currentSecond < lastSecond) { // 时钟回拨, 拒绝生产uid
             long refusedSeconds = lastSecond - currentSecond;
             throw new UidGenerateException("Clock moved backwards. Refusing for %d seconds", refusedSeconds);
         }
 
-        // At the same second, increase sequence
+        // At the same second, increase sequence, 在同一秒内
         if (currentSecond == lastSecond) {
-            sequence = (sequence + 1) & bitsAllocator.getMaxSequence();
+            sequence = (sequence + 1) & bitsAllocator.getMaxSequence(); // sequence++;
             // Exceed the max sequence, we wait the next second to generate uid
-            if (sequence == 0) {
-                currentSecond = getNextSecond(lastSecond);
+            if (sequence == 0) { // 这一秒内的序列号被消耗完了
+                currentSecond = getNextSecond(lastSecond); // 这里返回后，就是下一秒了
             }
 
         // At the different second, sequence restart from zero
-        } else {
+        } else { // 不在同一秒内，sequence从1开始
             sequence = 0L;
         }
 
-        lastSecond = currentSecond;
+        lastSecond = currentSecond; // 更新最近获取id的时间点
 
         // Allocate bits for UID
         return bitsAllocator.allocate(currentSecond - epochSeconds, workerId, sequence);
@@ -162,6 +162,7 @@ public class DefaultUidGenerator implements UidGenerator, InitializingBean {
 
     /**
      * Get next millisecond
+     * 等待当前1s结束，直到到达下1s, 并且返回下一秒时间
      */
     private long getNextSecond(long lastTimestamp) {
         long timestamp = getCurrentSecond();

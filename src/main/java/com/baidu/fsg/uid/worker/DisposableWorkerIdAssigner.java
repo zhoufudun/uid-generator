@@ -51,7 +51,7 @@ public class DisposableWorkerIdAssigner implements WorkerIdAssigner {
         WorkerNodeEntity workerNodeEntity = buildWorkerNode();
 
         // add worker node for new (ignore the same IP + PORT)
-        workerNodeDAO.addWorkerNode(workerNodeEntity);
+        workerNodeDAO.addWorkerNode(workerNodeEntity); // 如果数据库存在相同的IP+PORT 更新，否者新增
         LOGGER.info("Add worker node:" + workerNodeEntity);
 
         return workerNodeEntity.getId();
@@ -61,7 +61,7 @@ public class DisposableWorkerIdAssigner implements WorkerIdAssigner {
      * Build worker node entity by IP and PORT
      */
     private WorkerNodeEntity buildWorkerNode() {
-        WorkerNodeEntity workerNodeEntity = new WorkerNodeEntity();
+        WorkerNodeEntity workerNodeEntity = new WorkerNodeEntity(); // WorkerNodeEntity[id=0,hostName=10.2.40.18,port=1702530074897-34794,type=2,launchDate=Thu Dec 14 13:01:11 CST 2023,created=<null>,modified=<null>]
         if (DockerUtils.isDocker()) {
             workerNodeEntity.setType(WorkerNodeType.CONTAINER.value());
             workerNodeEntity.setHostName(DockerUtils.getDockerHost());
@@ -70,7 +70,7 @@ public class DisposableWorkerIdAssigner implements WorkerIdAssigner {
         } else {
             workerNodeEntity.setType(WorkerNodeType.ACTUAL.value());
             workerNodeEntity.setHostName(NetUtils.getLocalAddress());
-            workerNodeEntity.setPort(System.currentTimeMillis() + "-" + RandomUtils.nextInt(100000));
+            workerNodeEntity.setPort(System.currentTimeMillis() + "-" + RandomUtils.nextInt(100000)); // 对于物理机，端口随机在100000以内
         }
 
         return workerNodeEntity;

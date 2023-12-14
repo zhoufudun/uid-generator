@@ -24,7 +24,7 @@ import com.baidu.fsg.uid.worker.WorkerNodeType;
 
 /**
  * Entity for M_WORKER_NODE
- *
+ * 每一个机器启动时更新数据信息
  * @author yutianbao
  */
 public class WorkerNodeEntity {
@@ -122,6 +122,7 @@ public class WorkerNodeEntity {
     public void setModified(Date modified) {
         this.modified = modified;
     }
+
 
     @Override
     public String toString() {

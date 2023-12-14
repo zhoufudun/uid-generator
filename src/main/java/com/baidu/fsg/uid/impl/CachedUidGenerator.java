@@ -45,7 +45,9 @@ import com.baidu.fsg.uid.exception.UidGenerateException;
  * <li><b>scheduleInterval:</b> Padding buffer in a schedule, specify padding buffer interval, Unit as second
  * <li><b>rejectedPutBufferHandler:</b> Policy for rejected put buffer. Default as discard put request, just do logging
  * <li><b>rejectedTakeBufferHandler:</b> Policy for rejected take buffer. Default as throwing up an exception
- * 
+ *
+ * 该类是一种模式之一：RingBuffer，它可以缓存未来几秒的uid，提高并发
+ * 另外一种模式为：DefaultUidGenerator，他只能在一秒内获取，一秒内用完了，只能等待，并发不如RingBuffer
  * @author yutianbao
  */
 public class CachedUidGenerator extends DefaultUidGenerator implements DisposableBean {
@@ -55,10 +57,10 @@ public class CachedUidGenerator extends DefaultUidGenerator implements Disposabl
     /** Spring properties */
     private int boostPower = DEFAULT_BOOST_POWER;
     private int paddingFactor = RingBuffer.DEFAULT_PADDING_PERCENT;
-    private Long scheduleInterval;
+    private Long scheduleInterval; // 50s
     
-    private RejectedPutBufferHandler rejectedPutBufferHandler;
-    private RejectedTakeBufferHandler rejectedTakeBufferHandler;
+    private RejectedPutBufferHandler rejectedPutBufferHandler; // ringBuffer满了的时候放不进去的拒绝策略
+    private RejectedTakeBufferHandler rejectedTakeBufferHandler; // ringBuffer空了的时候获取不到的拒绝策略
 
     /** RingBuffer */
     private RingBuffer ringBuffer;
@@ -77,7 +79,7 @@ public class CachedUidGenerator extends DefaultUidGenerator implements Disposabl
     @Override
     public long getUID() {
         try {
-            return ringBuffer.take();
+            return ringBuffer.take(); // 举例：RingBuffer [bufferSize=65536, tail=71114, cursor=33108, paddingThreshold=32768]
         } catch (Exception e) {
             LOGGER.error("Generate unique id exception. ", e);
             throw new UidGenerateException(e);
@@ -96,19 +98,19 @@ public class CachedUidGenerator extends DefaultUidGenerator implements Disposabl
 
     /**
      * Get the UIDs in the same specified second under the max sequence
-     * 
+     * 返回指定1s内，有序的UID集合, 这里每次都会产生MaxSequence+1个uid
      * @param currentSecond
      * @return UID list, size of {@link BitsAllocator#getMaxSequence()} + 1
      */
     protected List<Long> nextIdsForOneSecond(long currentSecond) {
         // Initialize result list size of (max sequence + 1)
-        int listSize = (int) bitsAllocator.getMaxSequence() + 1;
+        int listSize = (int) bitsAllocator.getMaxSequence() + 1; // 8192
         List<Long> uidList = new ArrayList<>(listSize);
-
+        // 分配一秒内第一个序列，其他序列可以用偏移量计算
         // Allocate the first sequence of the second, the others can be calculated with the offset
         long firstSeqUid = bitsAllocator.allocate(currentSecond - epochSeconds, workerId, 0L);
         for (int offset = 0; offset < listSize; offset++) {
-            uidList.add(firstSeqUid + offset);
+            uidList.add(firstSeqUid + offset); //计算出这一秒内的所有可用有序集合：UIDs
         }
 
         return uidList;
@@ -119,7 +121,7 @@ public class CachedUidGenerator extends DefaultUidGenerator implements Disposabl
      */
     private void initRingBuffer() {
         // initialize RingBuffer
-        int bufferSize = ((int) bitsAllocator.getMaxSequence() + 1) << boostPower;
+        int bufferSize = ((int) bitsAllocator.getMaxSequence() + 1) << boostPower;  // 默认8192*8=2^13 * 2^3=65536
         this.ringBuffer = new RingBuffer(bufferSize, paddingFactor);
         LOGGER.info("Initialized ring buffer size:{}, paddingFactor:{}", bufferSize, paddingFactor);
 
@@ -171,4 +173,7 @@ public class CachedUidGenerator extends DefaultUidGenerator implements Disposabl
         this.scheduleInterval = scheduleInterval;
     }
 
+    public void setPaddingFactor(int paddingFactor) {
+        this.paddingFactor=paddingFactor;
+    }
 }
